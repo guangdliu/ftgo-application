@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Service ///1. Specify that this is an object of type ( Deployment or Service) 
+/*** 
+A service in Kubernetes object that provides the clients of one or more pods with a 
+stable endpoint. It has an IP address and a DNS name. 
+The service load balances traffic to that IP address across the pods.
+e.g. The load balancer routes the traffic from 
+http://ftgo-kithchen-service (svc):8080 (port: 8080) to the pods defined at (targetPort: 8080)
+
+Kubernets runs on top of Dockers. I think we  still need to run 
+docker build, docker tag, docker push 
+to create an linux container image in the docker central repo.  
+After that, we define the *.yml file for kubernets. 
+These yml file will pull the linux image down when needed.
+***/
+metadata:
+  name: ftgo-kitchen-service /// The name of the service, also the DNS name.
+spec:
+  ports:
+  - port: 8080 /// the exposed port 
+    targetPort: 8080 /// the container port to route traffic to
+  selector:
+    svc: ftgo-kitchen-service 
+/// key part. It selects the target pods. It selects those pods that have a label
+/// named svc with the value ftgo-kitchen-service.
+---
+apiVersion: extensions/v1beta1
+kind: Deployment /// 1. specifies this is an object of type Deployment
+metadata:
+  name: ftgo-kitchen-service ///2. The name of the deployment
+  labels: 
+    application: ftgo /// 4 Gives each pod a label called application whose value is ftgo
+spec: /// 5. the specification of the pod, which defines just one container
+  replicas: 1 ///3 Number of pod replicas
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        svc: ftgo-kitchen-service
+        application: ftgo
+    spec:
+      containers:
+      - name: ftgo-kitchen-service
+///If you check ftgo-application-repo/publish-docker-image.sh,
+///you know that a docker linux image  ftgo-kitchen-service has been pushed to a central repo: DOCKER_REPO=msapatterns
+/***
+https://kubernetes.io/docs/concepts/containers/images/
+
+Updating Images 
+The default pull policy is IfNotPresent which causes the kubelet to skip pulling an image if it already exists. 
+If you would like to always force a pull, you can do one of the following:
+
+set the imagePullPolicy of the container to Always.
+omit the imagePullPolicy and use :latest as the tag for the image to use. 
+omit the imagePullPolicy and the tag for the image to use.
+***/
+        image: msapatterns/ftgo-kitchen-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080 /// 6 The container's port
+          name: httpport
+        env: ///7. The container's environment variables, which are read by Spring Boot
+          - name: JAVA_OPTS
+            value: "-Dsun.net.inetaddr.ttl=30"
+          - name: SPRING_DATASOURCE_URL
+            value: jdbc:mysql://ftgo-mysql/eventuate
+          - name: SPRING_DATASOURCE_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: ftgo-db-secret
+                key: username
+          - name: SPRING_DATASOURCE_PASSWORD ///8 Sensitive values that are retrieved from the Kubernetes Secret called ftgo-db-secret
+            valueFrom:
+              secretKeyRef:
+                name: ftgo-db-secret
+                key: password
+          - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+            value: com.mysql.jdbc.Driver
+          - name: EVENTUATELOCAL_KAFKA_BOOTSTRAP_SERVERS
+            value: ftgo-kafka:9092
+          - name: EVENTUATELOCAL_ZOOKEEPER_CONNECTION_STRING
+            value: ftgo-zookeeper:2181
+        livenessProbe: ///9. Configure Kubernetes to invoke the health check endpoint
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 20
+        readinessProbe: /// readiness check decides whether kubernete should route traffic to a service instance
+        				///by default, kubernete considers the service ready if succeeds in 1 time, not ready if failed in 3 times.
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 20
+---
+
+/***
+This is how we run this YAML file:
+
+kubettl apply -f ftgo-kitchen-service/src/deployment/kubernetes/ftgo-kitchen-service.yml
+
+This command makes a request to Kubernetes API server that results in the creation of the depolyment and the pods.
+
+To
+
+***/

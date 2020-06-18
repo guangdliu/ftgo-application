@@ -1,0 +1,78 @@
+/***
+this query uses the DynamoDB query() operation, which requires a table to have a
+composite primary key consisting of two scalar attributes. 
+
+The first attribute is a partitionkey. 
+The partition key is so called because DynamoDB¡¯s Z-axis scaling (described in
+chapter 1) uses it to select an item¡¯s storage partition. 
+The second attribute is the sortkey. 
+A query() operation returns those items that have the specified partition key,
+have a sort key in the specified range, and match the optional filter expression. 
+It returns items in the order specified by the sort key.
+
+The findOrderHistory() query operation returns a consumer¡¯s orders sorted by
+increasing age. It therefore requires a primary key that has the consumerId as the partition
+key and the orderCreationDate as the sort key. But it doesn¡¯t make sense for
+(consumerId, orderCreationDate) to be the primary key of the ftgo-order-history
+table, because it¡¯s not unique.
+
+The solution is for findOrderHistory() to query what DynamoDB calls a secondary
+index on the ftgo-order-history table. This index has (consumerId, orderCreation-
+Date) as its non-unique key. Like an RDBMS index, a DynamoDB index is automatically
+updated whenever its table is updated. But unlike a typical RDBMS index, a
+DynamoDB index can have non-key attributes. Non-key attributes improve performance
+because they¡¯re returned by the query, so the application doesn¡¯t have to fetch them
+from the table. Also, as you¡¯ll soon see, they can be used for filtering
+
+***/
+
+
+{
+  "TableName": "ftgo-order-history",
+  "KeySchema": [
+    {
+      "KeyType": "HASH",
+      "AttributeName": "orderId"
+    }
+  ],
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "consumerId",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "creationDate",
+      "AttributeType": "N"
+    },
+    {
+      "AttributeName": "orderId",
+      "AttributeType": "S"
+    }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "ftgo-order-history-by-consumer-id-and-creation-time",
+      "Projection": {
+        "ProjectionType": "ALL"
+      },
+      "ProvisionedThroughput": {
+        "WriteCapacityUnits": 3,
+        "ReadCapacityUnits": 3
+      },
+      "KeySchema": [
+        {
+          "KeyType": "HASH",
+          "AttributeName": "consumerId"
+        },
+        {
+          "KeyType": "RANGE",
+          "AttributeName": "creationDate"
+        }
+      ]
+    }
+  ],
+  "ProvisionedThroughput": {
+    "WriteCapacityUnits": 3,
+    "ReadCapacityUnits": 3
+  }
+}

@@ -1,0 +1,69 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+        classpath "io.spring.gradle:dependency-management-plugin:$springDependencyManagementPluginVersion"
+        classpath "com.avast.gradle:gradle-docker-compose-plugin:$dockerComposePluginVersion"
+    }
+
+}
+
+
+plugins {
+    id "com.github.ben-manes.versions" version "0.20.0"
+}
+
+apply plugin: WaitForMySqlPlugin
+apply plugin: 'docker-compose'
+
+subprojects {
+
+    apply plugin: "java"
+    apply plugin: 'pmd'
+
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+
+    group = "net.chrisrichardson.ftgo"
+
+    repositories {
+        eventuateMavenRepoUrl.split(',').each { repoUrl -> maven { url repoUrl } }
+
+        mavenCentral()
+        jcenter()
+
+        maven {
+            url 'https://repo.spring.io/libs-milestone'
+        }
+
+        maven {
+            url "${project.rootDir}/build/repo"
+        }
+
+    }
+
+}
+
+/***
+ftgo-accounting-service-contracts
+ftgo-consumer-service-contracts
+ftgo-kitchen-service-contracts
+ftgo-order-service-contracts
+***/
+task buildContracts(type: GradleBuild) {
+  tasks = subprojects.collect { it.name }.findAll { it.endsWith("-contracts") }.collect { ":" + it + ":publish"}
+}
+
+task compileAll(type: GradleBuild) {
+  tasks = ["testClasses", "compileIntegrationTestJava", "compileComponentTestJava"]
+}
+
+dockerCompose {
+  projectName = null
+  removeOrphans = true
+  if (project.hasProperty('startedServices'))
+    startedServices= project.ext.startedServices.split(',')
+
+}

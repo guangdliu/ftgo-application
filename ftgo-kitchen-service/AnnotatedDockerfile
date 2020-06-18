@@ -1,0 +1,55 @@
+ /***
+ 1. The base image.
+ The base image openjdk:8u171-jre-alpine is a minimal footprint Linux image containing the JRE. 
+ The Dockerfile copies the service's JAR (which is under build/libs/ftgo-kitchen-service.jar) into 
+ the image and configures the image to execute the JAR on startup. It also configures Docker to
+ periodically invoke the health check endpoint API, described in Chapter 11. 
+ 
+ This Dockerfile is used to build the linux image. You can run  the following commands: 
+ Listing 12.2 The shell command used to build the container image for kitchen service
+ cd ftgo-kitchen-service 1 Change to the service's directory
+ ../graddlew assemble /// 2 Build the service's JAR e.g. ftgo-kitchen-service.jar so that it can be run by docker
+ docker build -t ftgo-restaurant-service . /// 3 Build the linux image. -t specifies the image name.
+ 
+ The final step of the build process is to push the newly built Docker image to what is known as a registry. 
+ You can use Docker cloud registry (private registry since it's commercial app). 
+ A Docker registry is the equivalent of a Java maven repository for Java libraries.
+ 
+ You need to use two docker commands to put an image to a registry. 
+ 
+ 	docker tag ftgo-restaurant-service registry.acme.com/fgo-restaurant-service:1.0.0.RELEASE 
+ 	docker push registry ftgo-restaurant-service registry.acme.com/fgo-restaurant-service:1.0.0.RELEASE 
+ 	
+ Note that imageName is prefixed with registry hostname, and suffixed with the version which is very import
+ when you make a new release of the service. 
+ 
+ How to run Docker? 
+ 
+ docker run \ 1. Runs it as a background daemon
+ 	-d \ 
+ 	--name ftgo-restaurant-service \ 2. The name of the container
+ 	-p 8082:8080 \
+ 	-e SPRING_DATA_SOURCE_URL =... -e SPRING_DATA_SOURCE_USERNAME = .. \ 3. Binds port 8080 of the container to port 8082 of the host machine
+ 	-e SPRING_DATA_SOURCE_PASSWORD = ... \ 4. Environment variables
+ 	registry.acme.com/ftgo-restaurant-service:1.0.0.RELEASE 5. Image to run
+ 	
+ 	
+The docker run command pulls the image from the registry if necessary. It then creates and starts the container,
+which runs the java -jar command specified in the Dockerfile. 
+
+One problem with docker run is that a service needs its dependent services. It would be nice to deploy or undeploy
+a service and its dependencies as a unit. 
+
+A better approach is to use Docker Compose. Docker Compose is a tool that lets you declaretively define a set 
+of containers using a YAML file, and then start and stop those containers as a group. What's more, the YAML file is
+a convienient way to specify numerous externalized configuration properties. 
+
+The problem with Docker Compose, though, is that it's limited to a single machine. To deploy services reliably,
+you must use a Docker orchestration framework, such as Kubernets. 
+ 
+ ***/
+FROM openjdk:8u171-jre-alpine 
+RUN apk --no-cache add curl ///2. Install curl for use by the health check
+CMD java ${JAVA_OPTS} -jar ftgo-kitchen-service.jar ///3. Configure Docker to run java -jar .. when the container is started
+HEALTHCHECK --start-period=30s --interval=5s CMD curl -f http://localhost:8080/actuator/health || exit 1 /// 4. Configure Docker to invoke the heal check
+COPY build/libs/ftgo-kitchen-service.jar . /// 5. Copy the JAR in Gradle's build directory into the image
