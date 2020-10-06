@@ -20,9 +20,15 @@ This is usually a Java class with the main method, annotated with @SpringBootApp
 
 The @SpringBootApplication annotation adds the following annotations:
 
-	@Configuration 每 which marks the class as a source of bean definitions
-	@EnableAutoConfiguration 每 which tells the framework to add beans based on the dependencies on the classpath automatically
-	@ComponentScan 每 which scans for other configurations and beans in the same package as the Application class or below
+	@SpringBootConfiguration 〞Designates this class as a configuration class. 
+	This annotation is, in fact, a specialized form of the @Configuration annotation. @Configuration which marks the class as a source of bean definitions
+	
+	@EnableAutoConfiguration 每 which tells the framework to add beans based on the dependencies on the classpath automatically. 
+	In other words, this annotation tells Spring Boot to automatically configure any components that it thinks you＊ll need. 
+	
+	@ComponentScan 每  Enables component scanning. This lets you declare other classes with annotations 
+	like @Component, @Controller, @Service, and others, to have Spring automatically discover them and register them as components in the Spring application context.
+	SpringBoot scans for other configurations and beans in the same package as the Application class or below. 
 	
 By default, the @SpringBootApplication annotation scans all classes in the same package or below. 
 Therefore, a convenient package structure could look like this:	
@@ -69,6 +75,18 @@ So Spring container can process the class and generate Spring Beans to be used i
 public class AnnotatedOrderServiceMain {
 
   public static void main(String[] args) {
+	 /***
+	The other important piece of TacoCloudApplication is the main() method. This is the
+	method that will be run when the JAR file is executed. For the most part, this method is
+	boilerplate code; every Spring Boot application you write will have a method similar or
+	identical to this one (class name differences notwithstanding).
+	The main() method calls a static run() method on the SpringApplication class,
+	which performs the actual bootstrapping of the application, creating the Spring application
+	context. The two parameters passed to the run() method are a configuration
+	class and the command-line arguments. Although it＊s not necessary that the configuration
+	class passed to run() be the same as the bootstrap class, this is the most convenient
+	and typical choice.	  
+	***/
     SpringApplication.run(AnnotatedOrderServiceMain.class, args);
   }
 }

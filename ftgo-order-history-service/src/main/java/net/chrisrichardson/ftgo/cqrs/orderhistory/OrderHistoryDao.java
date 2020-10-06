@@ -17,7 +17,7 @@ public interface OrderHistoryDao {
 
   void noteTicketPreparationStarted(String orderId);
 
-  void noteTicketPreparationCompleted(String orderId);
+  void noteTicketPreparationCompleted(SRtring orderId);
 
   void notePickedUp(String orderId, Optional<SourceEvent> eventSource);
 

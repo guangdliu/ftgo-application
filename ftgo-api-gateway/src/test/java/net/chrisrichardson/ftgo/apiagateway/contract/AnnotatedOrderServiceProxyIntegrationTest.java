@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 https://www.baeldung.com/spring-boot-testing
 The integration tests need to start up a container to execute the test cases. 
 Hence, some additional setup is required for this ¨C all of this is easy in Spring Boot.
-The @SpringBootTest annotation can be used when we need to bootstrap the entire container. 
+The @SpringBootTest annotation can be used when we need to bootstrap the entire container. R
 The annotation works by creating the ApplicationContext that will be utilized in our tests.
 
 /// So these ApplicationContext can be used to do bean injection I guess.
@@ -32,6 +32,23 @@ We can use the webEnvironment attribute of @SpringBootTest
 to configure our runtime environment; 
 we're using WebEnvironment.MOCK here ¨C 
 so that the container will operate in a mock servlet environment.
+
+
+Also notice the class annotated with @RunWith(SpringRunner.class). @RunWith is
+a JUnit annotation, providing a test runner that guides JUnit in running a test. Think
+of it as applying a plugin to JUnit to provide custom testing behavior. In this case,
+JUnit is given SpringRunner, a Spring-provided test runner that provides for the creation
+of a Spring application context that the test will run against.
+
+If you¡¯re already familiar with writing Spring tests or are maybe looking at some existing
+Spring-based test classes, you may have seen a test runner named SpringJUnit4-
+ClassRunner. SpringRunner is an alias for SpringJUnit4ClassRunner, and was
+introduced in Spring 4.3 to remove the association with a specific version of JUnit (for
+example, JUnit 4). And there¡¯s no denying that the alias is easier to read and type.
+@SpringBootTest tells JUnit to bootstrap the test with Spring Boot capabilities.
+For now, it¡¯s enough to think of this as the test class equivalent of calling Spring-
+Application.run() in a main() method. Over the course of this book, you¡¯ll see
+@SpringBootTest several times, and we¡¯ll uncover some of its power.
 
 ***/
 @RunWith(SpringRunner.class)

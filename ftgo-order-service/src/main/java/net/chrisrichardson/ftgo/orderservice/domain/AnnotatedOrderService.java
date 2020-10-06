@@ -199,16 +199,13 @@ public class AnnotatedOrderService {
     List<OrderLineItem> orderLineItems = makeOrderLineItems(lineItems, restaurant);
 
     /***
-    Order.createOrder won't save the order to db.
     It creates an OrderCreatedEvent.
     
-    If everything goes right, OrderCreatedEvent eventually is handled by
-    OrderHistoryEventHandlers.handleOrderCreated where it saves an order to
-    db. 
+    OrderCreatedEvent eventually is processed by
+    OrderHistoryEventHandlers.handleOrderCreated where it saves an order to db. 
         boolean result = orderHistoryDao.addOrder(makeOrder(dee.getAggregateId(), dee.getEvent()), makeSourceEvent(dee));
         orderHistoryDao.addOrder calls
-	        orderHistoryDao.idempotentUpdate(UpdateItemSpec spec, Optional<SourceEvent>
-	          eventSource)
+	        orderHistoryDao.idempotentUpdate(UpdateItemSpec spec, Optional<SourceEvent> eventSource)
 	    to save order.
 
 	2. Create an order

@@ -13,6 +13,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
+/***
+The @Configuration annotation indicates to Spring that this is a configuration class
+that will provide beans to the Spring application context. 
+
+The configuration¡¯s class methods are annotated with @Bean, indicating that the objects they return should be added
+as beans in the application context (where, by default, their respective bean IDs will
+be the same as the names of the methods that define them).
+***/
 @Configuration
 @Import({KitchenDomainConfiguration.class, SagaParticipantConfiguration.class, CommonConfiguration.class, TramEventSubscriberConfiguration.class, SagaParticipantConfiguration.class})
 public class AnnotatedKitchenServiceMessageHandlersConfiguration {
