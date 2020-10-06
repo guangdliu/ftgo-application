@@ -2,14 +2,14 @@ package net.chrisrichardson.ftgo.consumerservice;
 
 
 import io.eventuate.tram.commands.producer.CommandProducer;
-import io.eventuate.tram.commands.producer.TramCommandProducerConfiguration;
-import io.eventuate.tram.inmemory.TramInMemoryConfiguration;
+import io.eventuate.tram.spring.commands.producer.TramCommandProducerConfiguration;
+import io.eventuate.tram.spring.inmemory.TramInMemoryConfiguration;
 import io.eventuate.tram.testutil.TestMessageConsumer;
 import io.eventuate.tram.testutil.TestMessageConsumerFactory;
 import net.chrisrichardson.ftgo.common.Money;
 import net.chrisrichardson.ftgo.common.PersonName;
 import net.chrisrichardson.ftgo.consumerservice.api.ValidateOrderByConsumer;
-import net.chrisrichardson.ftgo.consumerservice.api.web.CreateConsumerRequest;
+import net.chrisrichardson.ftgo.consumerservice.web.CreateConsumerRequest;
 import net.chrisrichardson.ftgo.consumerservice.web.ConsumerWebConfiguration;
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -2,24 +2,20 @@ package net.chrisrichardson.ftgo.orderservice.domain;
 
 import com.jayway.jsonpath.JsonPath;
 import io.eventuate.tram.commands.common.CommandMessageHeaders;
-import io.eventuate.tram.commands.producer.TramCommandProducerConfiguration;
+import io.eventuate.tram.spring.commands.producer.TramCommandProducerConfiguration;
 import io.eventuate.tram.events.publisher.DomainEventPublisher;
-import io.eventuate.tram.inmemory.TramInMemoryConfiguration;
-import io.eventuate.tram.messaging.common.ChannelMapping;
-import io.eventuate.tram.messaging.common.DefaultChannelMapping;
 import io.eventuate.tram.messaging.common.Message;
+import io.eventuate.tram.sagas.spring.inmemory.TramSagaInMemoryConfiguration;
 import io.eventuate.tram.testutil.TestMessageConsumerFactory;
 import io.eventuate.util.test.async.Eventually;
-import net.chrisrichardson.ftgo.common.Money;
 import net.chrisrichardson.ftgo.consumerservice.api.ConsumerServiceChannels;
 import net.chrisrichardson.ftgo.consumerservice.api.ValidateOrderByConsumer;
+import net.chrisrichardson.ftgo.orderservice.OrderDetailsMother;
+import net.chrisrichardson.ftgo.orderservice.RestaurantMother;
 import net.chrisrichardson.ftgo.orderservice.messaging.OrderServiceMessagingConfiguration;
 import net.chrisrichardson.ftgo.orderservice.service.OrderCommandHandlersConfiguration;
 import net.chrisrichardson.ftgo.orderservice.web.MenuItemIdAndQuantity;
 import net.chrisrichardson.ftgo.orderservice.web.OrderWebConfiguration;
-import net.chrisrichardson.ftgo.restaurantservice.events.MenuItem;
-import net.chrisrichardson.ftgo.restaurantservice.events.RestaurantCreated;
-import net.chrisrichardson.ftgo.restaurantservice.events.RestaurantMenu;
 import net.chrisrichardson.ftgo.testutil.FtgoTestUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,11 +27,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import javax.sql.DataSource;
 import java.util.Collections;
 import java.util.function.Predicate;
 
@@ -59,22 +52,12 @@ public class OrderServiceIntegrationTest {
   @EnableAutoConfiguration
   @Import({OrderWebConfiguration.class, OrderServiceMessagingConfiguration.class,  OrderCommandHandlersConfiguration.class,
           TramCommandProducerConfiguration.class,
-          TramInMemoryConfiguration.class})
+          TramSagaInMemoryConfiguration.class})
   public static class TestConfiguration {
 
     @Bean
     public TestMessageConsumerFactory testMessageConsumerFactory() {
       return new TestMessageConsumerFactory();
-    }
-
-
-    @Bean
-    public DataSource dataSource() {
-      EmbeddedDatabaseBuilder builder = new EmbeddedDatabaseBuilder();
-      return builder.setType(EmbeddedDatabaseType.H2)
-              .addScript("eventuate-tram-embedded-schema.sql")
-              .addScript("eventuate-tram-sagas-embedded.sql")
-              .build();
     }
 
 
@@ -105,8 +88,7 @@ public class OrderServiceIntegrationTest {
   @Test
   public void shouldCreateOrder() {
     domainEventPublisher.publish("net.chrisrichardson.ftgo.restaurantservice.domain.Restaurant", RESTAURANT_ID,
-            Collections.singletonList(new RestaurantCreated("Ajanta",
-                    new RestaurantMenu(Collections.singletonList(new MenuItem(CHICKED_VINDALOO_MENU_ITEM_ID, "Chicken Vindaloo", new Money("12.34")))))));
+            Collections.singletonList(RestaurantMother.makeAjantaRestaurantCreatedEvent()));
 
     Eventually.eventually(() -> {
       FtgoTestUtil.assertPresent(restaurantRepository.findById(Long.parseLong(RESTAURANT_ID)));
@@ -114,7 +96,7 @@ public class OrderServiceIntegrationTest {
 
     long consumerId = 1511300065921L;
 
-    Order order = orderService.createOrder(consumerId, Long.parseLong(RESTAURANT_ID), Collections.singletonList(new MenuItemIdAndQuantity(CHICKED_VINDALOO_MENU_ITEM_ID, 5)));
+    Order order = orderService.createOrder(consumerId, Long.parseLong(RESTAURANT_ID), OrderDetailsMother.DELIVERY_INFORMATION, Collections.singletonList(new MenuItemIdAndQuantity(CHICKED_VINDALOO_MENU_ITEM_ID, 5)));
 
     FtgoTestUtil.assertPresent(orderRepository.findById(order.getId()));
 

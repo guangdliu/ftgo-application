@@ -2,9 +2,9 @@ package net.chrisrichardson.ftgo.orderservice;
 
 import io.eventuate.tram.commands.common.ChannelMapping;
 import io.eventuate.tram.commands.common.DefaultChannelMapping;
-import io.eventuate.tram.commands.producer.TramCommandProducerConfiguration;
+import io.eventuate.tram.spring.commands.producer.TramCommandProducerConfiguration;
 import io.eventuate.tram.events.publisher.DomainEventPublisher;
-import io.eventuate.tram.inmemory.TramInMemoryConfiguration;
+import io.eventuate.tram.spring.inmemory.TramInMemoryConfiguration;
 import io.eventuate.util.test.async.Eventually;
 import net.chrisrichardson.ftgo.orderservice.api.events.OrderState;
 import net.chrisrichardson.ftgo.orderservice.domain.Order;
@@ -14,8 +14,6 @@ import net.chrisrichardson.ftgo.orderservice.domain.RestaurantRepository;
 import net.chrisrichardson.ftgo.orderservice.messaging.OrderServiceMessagingConfiguration;
 import net.chrisrichardson.ftgo.orderservice.service.OrderCommandHandlersConfiguration;
 import net.chrisrichardson.ftgo.orderservice.web.OrderWebConfiguration;
-import net.chrisrichardson.ftgo.restaurantservice.events.RestaurantCreated;
-import net.chrisrichardson.ftgo.restaurantservice.events.RestaurantMenu;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,8 +103,7 @@ public class OrderServiceOutOfProcessComponentV0Test {
   @Test
   public void shouldCreateOrder() throws InterruptedException {
     domainEventPublisher.publish("net.chrisrichardson.ftgo.restaurantservice.domain.Restaurant", RestaurantMother.AJANTA_ID,
-            Collections.singletonList(new RestaurantCreated(RestaurantMother.AJANTA_RESTAURANT_NAME,
-                    new RestaurantMenu(Collections.singletonList(RestaurantMother.CHICKEN_VINDALOO_MENU_ITEM)))));
+            Collections.singletonList(RestaurantMother.makeAjantaRestaurantCreatedEvent()));
 
     Eventually.eventually(() -> {
       FtgoTestUtil.assertPresent(restaurantRepository.findById(RestaurantMother.AJANTA_ID));

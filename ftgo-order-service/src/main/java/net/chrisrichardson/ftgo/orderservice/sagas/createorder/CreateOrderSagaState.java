@@ -94,11 +94,15 @@ public class CreateOrderSagaState {
   }
 
   ValidateOrderByConsumer makeValidateOrderByConsumerCommand() {
-    return new ValidateOrderByConsumer(getOrderDetails().getConsumerId(), getOrderId(), getOrderDetails().getOrderTotal());
+    ValidateOrderByConsumer x = new ValidateOrderByConsumer();
+    x.setConsumerId(getOrderDetails().getConsumerId());
+    x.setOrderId(getOrderId());
+    x.setOrderTotal(getOrderDetails().getOrderTotal().asString());
+    return x;
   }
 
   AuthorizeCommand makeAuthorizeCommand() {
-    return new AuthorizeCommand(getOrderDetails().getConsumerId(), getOrderId(), getOrderDetails().getOrderTotal());
+    return new AuthorizeCommand().withConsumerId(getOrderDetails().getConsumerId()).withOrderId(getOrderId()).withOrderTotal(getOrderDetails().getOrderTotal().asString());
   }
 
   ApproveOrderCommand makeApproveOrderCommand() {

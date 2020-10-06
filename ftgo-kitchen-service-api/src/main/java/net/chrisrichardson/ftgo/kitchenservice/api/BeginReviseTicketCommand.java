@@ -1,21 +1,23 @@
 package net.chrisrichardson.ftgo.kitchenservice.api;
 
 import io.eventuate.tram.commands.common.Command;
+import net.chrisrichardson.ftgo.common.RevisedOrderLineItem;
 
+import java.util.List;
 import java.util.Map;
 
 public class BeginReviseTicketCommand implements Command {
   private long restaurantId;
   private Long orderId;
-  private Map<String, Integer> revisedLineItemQuantities;
+  private List<RevisedOrderLineItem> revisedOrderLineItems;
 
   private BeginReviseTicketCommand() {
   }
 
-  public BeginReviseTicketCommand(long restaurantId, Long orderId, Map<String, Integer> revisedLineItemQuantities) {
+  public BeginReviseTicketCommand(long restaurantId, Long orderId, List<RevisedOrderLineItem> revisedOrderLineItems) {
     this.restaurantId = restaurantId;
     this.orderId = orderId;
-    this.revisedLineItemQuantities = revisedLineItemQuantities;
+    this.revisedOrderLineItems = revisedOrderLineItems;
   }
 
   public long getRestaurantId() {
@@ -34,11 +36,11 @@ public class BeginReviseTicketCommand implements Command {
     this.orderId = orderId;
   }
 
-  public Map<String, Integer> getRevisedLineItemQuantities() {
-    return revisedLineItemQuantities;
+  public List<RevisedOrderLineItem> getRevisedOrderLineItems() {
+    return revisedOrderLineItems;
   }
 
-  public void setRevisedLineItemQuantities(Map<String, Integer> revisedLineItemQuantities) {
-    this.revisedLineItemQuantities = revisedLineItemQuantities;
+  public void setRevisedOrderLineItems(List<RevisedOrderLineItem> revisedOrderLineItems) {
+    this.revisedOrderLineItems = revisedOrderLineItems;
   }
 }

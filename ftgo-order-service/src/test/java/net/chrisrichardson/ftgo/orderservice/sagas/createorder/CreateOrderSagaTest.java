@@ -11,6 +11,7 @@ import net.chrisrichardson.ftgo.kitchenservice.api.CreateTicket;
 import net.chrisrichardson.ftgo.kitchenservice.api.KitchenServiceChannels;
 import net.chrisrichardson.ftgo.orderservice.api.OrderServiceChannels;
 import net.chrisrichardson.ftgo.orderservice.sagaparticipants.*;
+import org.jetbrains.annotations.NotNull;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -40,30 +41,34 @@ public class CreateOrderSagaTest {
         .saga(makeCreateOrderSaga(),
                 new CreateOrderSagaState(ORDER_ID, CHICKEN_VINDALOO_ORDER_DETAILS)).
     expect().
-        command(new ValidateOrderByConsumer(CONSUMER_ID, ORDER_ID,
-                CHICKEN_VINDALOO_ORDER_TOTAL)).
+        command(makeValidateOrderByConsumer()).
         to(ConsumerServiceChannels.consumerServiceChannel).
     andGiven().
         successReply().
     expect().
       command(new CreateTicket(AJANTA_ID, ORDER_ID, null /* FIXME */)).
-      to(KitchenServiceChannels.kitchenServiceChannel).
+      to(KitchenServiceChannels.COMMAND_CHANNEL).
     andGiven().
         successReply().
     expect().
-      command(new AuthorizeCommand(CONSUMER_ID, ORDER_ID, CHICKEN_VINDALOO_ORDER_TOTAL)).
+      command(new AuthorizeCommand().withConsumerId(CONSUMER_ID).withOrderId(ORDER_ID).withOrderTotal(CHICKEN_VINDALOO_ORDER_TOTAL.asString())).
       to(AccountingServiceChannels.accountingServiceChannel).
     andGiven().
         successReply().
     expect().
       command(new ConfirmCreateTicket(ORDER_ID)).
-      to(KitchenServiceChannels.kitchenServiceChannel).
+      to(KitchenServiceChannels.COMMAND_CHANNEL).
     andGiven().
         successReply().
     expect().
       command(new ApproveOrderCommand(ORDER_ID)).
-      to(OrderServiceChannels.orderServiceChannel)
+      to(OrderServiceChannels.COMMAND_CHANNEL)
             ;
+  }
+
+  @NotNull
+  private ValidateOrderByConsumer makeValidateOrderByConsumer() {
+    return new ValidateOrderByConsumer().withConsumerId(CONSUMER_ID).withOrderId(ORDER_ID).withOrderTotal(CHICKEN_VINDALOO_ORDER_TOTAL.asString());
   }
 
   @Test
@@ -72,14 +77,13 @@ public class CreateOrderSagaTest {
         .saga(makeCreateOrderSaga(),
                 new CreateOrderSagaState(ORDER_ID, CHICKEN_VINDALOO_ORDER_DETAILS)).
     expect().
-        command(new ValidateOrderByConsumer(CONSUMER_ID, ORDER_ID,
-                CHICKEN_VINDALOO_ORDER_TOTAL)).
+        command(makeValidateOrderByConsumer()).
         to(ConsumerServiceChannels.consumerServiceChannel).
     andGiven().
         failureReply().
     expect().
         command(new RejectOrderCommand(ORDER_ID)).
-        to(OrderServiceChannels.orderServiceChannel);
+        to(OrderServiceChannels.COMMAND_CHANNEL);
   }
 
   @Test
@@ -88,29 +92,28 @@ public class CreateOrderSagaTest {
             .saga(makeCreateOrderSaga(),
                     new CreateOrderSagaState(ORDER_ID, CHICKEN_VINDALOO_ORDER_DETAILS)).
     expect().
-      command(new ValidateOrderByConsumer(CONSUMER_ID, ORDER_ID,
-              CHICKEN_VINDALOO_ORDER_TOTAL)).
+      command(makeValidateOrderByConsumer()).
       to(ConsumerServiceChannels.consumerServiceChannel).
     andGiven().
       successReply().
     expect().
       command(new CreateTicket(AJANTA_ID, ORDER_ID, null /* FIXME */)).
-      to(KitchenServiceChannels.kitchenServiceChannel).
+      to(KitchenServiceChannels.COMMAND_CHANNEL).
     andGiven().
       successReply().
     expect().
-      command(new AuthorizeCommand(CONSUMER_ID, ORDER_ID, CHICKEN_VINDALOO_ORDER_TOTAL)).
+      command(new AuthorizeCommand().withConsumerId(CONSUMER_ID).withOrderId(ORDER_ID).withOrderTotal(CHICKEN_VINDALOO_ORDER_TOTAL.asString())).
       to(AccountingServiceChannels.accountingServiceChannel).
     andGiven().
       failureReply().
     expect().
       command(new CancelCreateTicket(ORDER_ID)).
-      to(KitchenServiceChannels.kitchenServiceChannel).
+      to(KitchenServiceChannels.COMMAND_CHANNEL).
     andGiven().
       successReply().
     expect().
       command(new RejectOrderCommand(ORDER_ID)).
-      to(OrderServiceChannels.orderServiceChannel)
+      to(OrderServiceChannels.COMMAND_CHANNEL)
     ;
   }
 }

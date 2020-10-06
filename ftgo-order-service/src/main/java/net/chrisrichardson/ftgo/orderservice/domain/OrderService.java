@@ -2,17 +2,18 @@ package net.chrisrichardson.ftgo.orderservice.domain;
 
 import io.eventuate.tram.events.aggregates.ResultWithDomainEvents;
 import io.eventuate.tram.events.publisher.DomainEventPublisher;
-import io.eventuate.tram.sagas.orchestration.SagaManager;
+import io.eventuate.tram.sagas.orchestration.SagaInstanceFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import net.chrisrichardson.ftgo.orderservice.api.events.OrderDetails;
 import net.chrisrichardson.ftgo.orderservice.api.events.OrderDomainEvent;
 import net.chrisrichardson.ftgo.orderservice.api.events.OrderLineItem;
+import net.chrisrichardson.ftgo.orderservice.sagas.cancelorder.CancelOrderSaga;
 import net.chrisrichardson.ftgo.orderservice.sagas.cancelorder.CancelOrderSagaData;
+import net.chrisrichardson.ftgo.orderservice.sagas.createorder.CreateOrderSaga;
 import net.chrisrichardson.ftgo.orderservice.sagas.createorder.CreateOrderSagaState;
+import net.chrisrichardson.ftgo.orderservice.sagas.reviseorder.ReviseOrderSaga;
 import net.chrisrichardson.ftgo.orderservice.sagas.reviseorder.ReviseOrderSagaData;
 import net.chrisrichardson.ftgo.orderservice.web.MenuItemIdAndQuantity;
-import net.chrisrichardson.ftgo.restaurantservice.events.MenuItem;
-import net.chrisrichardson.ftgo.restaurantservice.events.RestaurantMenu;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,36 +25,48 @@ import java.util.function.Function;
 
 import static java.util.stream.Collectors.toList;
 
-@Transactional
 public class OrderService {
 
   private Logger logger = LoggerFactory.getLogger(getClass());
+
+  private SagaInstanceFactory sagaInstanceFactory;
 
   private OrderRepository orderRepository;
 
   private RestaurantRepository restaurantRepository;
 
-  private SagaManager<CreateOrderSagaState> createOrderSagaManager;
+  private CreateOrderSaga createOrderSaga;
 
-  private SagaManager<CancelOrderSagaData> cancelOrderSagaManager;
+  private CancelOrderSaga cancelOrderSaga;
 
-  private SagaManager<ReviseOrderSagaData> reviseOrderSagaManager;
+  private ReviseOrderSaga reviseOrderSaga;
 
   private OrderDomainEventPublisher orderAggregateEventPublisher;
 
   private Optional<MeterRegistry> meterRegistry;
 
-  public OrderService(OrderRepository orderRepository, DomainEventPublisher eventPublisher, RestaurantRepository restaurantRepository, SagaManager<CreateOrderSagaState> createOrderSagaManager, SagaManager<CancelOrderSagaData> cancelOrderSagaManager, SagaManager<ReviseOrderSagaData> reviseOrderSagaManager, OrderDomainEventPublisher orderAggregateEventPublisher, Optional<MeterRegistry> meterRegistry) {
+  public OrderService(SagaInstanceFactory sagaInstanceFactory,
+                      OrderRepository orderRepository,
+                      DomainEventPublisher eventPublisher,
+                      RestaurantRepository restaurantRepository,
+                      CreateOrderSaga createOrderSaga,
+                      CancelOrderSaga cancelOrderSaga,
+                      ReviseOrderSaga reviseOrderSaga,
+                      OrderDomainEventPublisher orderAggregateEventPublisher,
+                      Optional<MeterRegistry> meterRegistry) {
+
+    this.sagaInstanceFactory = sagaInstanceFactory;
     this.orderRepository = orderRepository;
     this.restaurantRepository = restaurantRepository;
-    this.createOrderSagaManager = createOrderSagaManager;
-    this.cancelOrderSagaManager = cancelOrderSagaManager;
-    this.reviseOrderSagaManager = reviseOrderSagaManager;
+    this.createOrderSaga = createOrderSaga;
+    this.cancelOrderSaga = cancelOrderSaga;
+    this.reviseOrderSaga = reviseOrderSaga;
     this.orderAggregateEventPublisher = orderAggregateEventPublisher;
     this.meterRegistry = meterRegistry;
   }
 
-  public Order createOrder(long consumerId, long restaurantId,
+  @Transactional
+  public Order createOrder(long consumerId, long restaurantId, DeliveryInformation deliveryInformation,
                            List<MenuItemIdAndQuantity> lineItems) {
     Restaurant restaurant = restaurantRepository.findById(restaurantId)
             .orElseThrow(() -> new RestaurantNotFoundException(restaurantId));
@@ -61,7 +74,7 @@ public class OrderService {
     List<OrderLineItem> orderLineItems = makeOrderLineItems(lineItems, restaurant);
 
     ResultWithDomainEvents<Order, OrderDomainEvent> orderAndEvents =
-            Order.createOrder(consumerId, restaurant, orderLineItems);
+            Order.createOrder(consumerId, restaurant, deliveryInformation, orderLineItems);
 
     Order order = orderAndEvents.result;
     orderRepository.save(order);
@@ -71,7 +84,7 @@ public class OrderService {
     OrderDetails orderDetails = new OrderDetails(consumerId, restaurantId, orderLineItems, order.getOrderTotal());
 
     CreateOrderSagaState data = new CreateOrderSagaState(order.getId(), orderDetails);
-    createOrderSagaManager.create(data, Order.class, order.getId());
+    sagaInstanceFactory.create(createOrderSaga, data);
 
     meterRegistry.ifPresent(mr -> mr.counter("placed_orders").increment());
 
@@ -99,11 +112,12 @@ public class OrderService {
     throw new UnsupportedOperationException();
   }
 
+  @Transactional
   public Order cancel(Long orderId) {
     Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new OrderNotFoundException(orderId));
     CancelOrderSagaData sagaData = new CancelOrderSagaData(order.getConsumerId(), orderId, order.getOrderTotal());
-    cancelOrderSagaManager.create(sagaData);
+    sagaInstanceFactory.create(cancelOrderSaga, sagaData);
     return order;
   }
 
@@ -136,10 +150,11 @@ public class OrderService {
     updateOrder(orderId, Order::noteCancelled);
   }
 
+  @Transactional
   public Order reviseOrder(long orderId, OrderRevision orderRevision) {
     Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
     ReviseOrderSagaData sagaData = new ReviseOrderSagaData(order.getConsumerId(), orderId, null, orderRevision);
-    reviseOrderSagaManager.create(sagaData);
+    sagaInstanceFactory.create(reviseOrderSaga, sagaData);
     return order;
   }
 
@@ -159,16 +174,14 @@ public class OrderService {
     updateOrder(orderId, order -> order.confirmRevision(revision));
   }
 
-  @Transactional(propagation = Propagation.MANDATORY)
-  public void createMenu(long id, String name, RestaurantMenu menu) {
-    Restaurant restaurant = new Restaurant(id, name, menu.getMenuItems());
+  public void createMenu(long id, String name, List<MenuItem> menuItems) {
+    Restaurant restaurant = new Restaurant(id, name, menuItems);
     restaurantRepository.save(restaurant);
   }
 
-  @Transactional(propagation = Propagation.MANDATORY)
-  public void reviseMenu(long id, RestaurantMenu revisedMenu) {
+  public void reviseMenu(long id, List<MenuItem> menuItems) {
     restaurantRepository.findById(id).map(restaurant -> {
-      List<OrderDomainEvent> events = restaurant.reviseMenu(revisedMenu);
+      List<OrderDomainEvent> events = restaurant.reviseMenu(menuItems);
       return restaurant;
     }).orElseThrow(RuntimeException::new);
   }

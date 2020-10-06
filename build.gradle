@@ -1,15 +1,15 @@
 buildscript {
     repositories {
         mavenCentral()
+        jcenter()
     }
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath "io.spring.gradle:dependency-management-plugin:$springDependencyManagementPluginVersion"
         classpath "com.avast.gradle:gradle-docker-compose-plugin:$dockerComposePluginVersion"
-    }
+        classpath "org.springframework.cloud:spring-cloud-contract-gradle-plugin:$springCloudContractDependenciesVersion"    }
 
 }
-
 
 plugins {
     id "com.github.ben-manes.versions" version "0.20.0"
@@ -21,7 +21,8 @@ apply plugin: 'docker-compose'
 subprojects {
 
     apply plugin: "java"
-    apply plugin: 'pmd'
+
+    // TODO apply plugin: 'pmd'
 
     sourceCompatibility = '1.8'
     targetCompatibility = '1.8'
@@ -29,13 +30,13 @@ subprojects {
     group = "net.chrisrichardson.ftgo"
 
     repositories {
-        eventuateMavenRepoUrl.split(',').each { repoUrl -> maven { url repoUrl } }
+        eventuateMavenRepoUrl.split('[ ,]').each { repoUrl -> maven { url repoUrl.trim() } }
 
         mavenCentral()
         jcenter()
 
         maven {
-            url 'https://repo.spring.io/libs-milestone'
+            url 'https://jitpack.io'
         }
 
         maven {

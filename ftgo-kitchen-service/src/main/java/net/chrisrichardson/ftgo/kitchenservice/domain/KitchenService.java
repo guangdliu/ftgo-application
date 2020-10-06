@@ -1,8 +1,9 @@
 package net.chrisrichardson.ftgo.kitchenservice.domain;
 
 import io.eventuate.tram.events.aggregates.ResultWithDomainEvents;
+import net.chrisrichardson.ftgo.common.RevisedOrderLineItem;
 import net.chrisrichardson.ftgo.kitchenservice.api.TicketDetails;
-import net.chrisrichardson.ftgo.restaurantservice.events.RestaurantMenu;
+import net.chrisrichardson.ftgo.kitchenservice.api.events.TicketDomainEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,7 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-@Transactional
 public class KitchenService {
 
   @Autowired
@@ -40,6 +40,7 @@ public class KitchenService {
     return rwe.result;
   }
 
+  @Transactional
   public void accept(long ticketId, LocalDateTime readyBy) {
     Ticket ticket = ticketRepository.findById(ticketId)
             .orElseThrow(() -> new TicketNotFoundException(ticketId));
@@ -88,11 +89,11 @@ public class KitchenService {
 
   }
 
-  public void beginReviseOrder(long restaurantId, Long ticketId, Map<String, Integer> revisedLineItemQuantities) {
+  public void beginReviseOrder(long restaurantId, Long ticketId, List<RevisedOrderLineItem> revisedOrderLineItems) {
     Ticket ticket = ticketRepository.findById(ticketId)
             .orElseThrow(() -> new TicketNotFoundException(ticketId));
     // TODO - verify restaurant id
-    List<TicketDomainEvent> events = ticket.beginReviseOrder(revisedLineItemQuantities);
+    List<TicketDomainEvent> events = ticket.beginReviseOrder(revisedOrderLineItems);
     domainEventPublisher.publish(ticket, events);
 
   }
@@ -105,11 +106,11 @@ public class KitchenService {
     domainEventPublisher.publish(ticket, events);
   }
 
-  public void confirmReviseTicket(long restaurantId, long ticketId, Map<String, Integer> revisedLineItemQuantities) {
+  public void confirmReviseTicket(long restaurantId, long ticketId, List<RevisedOrderLineItem> revisedOrderLineItems) {
     Ticket ticket = ticketRepository.findById(ticketId)
             .orElseThrow(() -> new TicketNotFoundException(ticketId));
     // TODO - verify restaurant id
-    List<TicketDomainEvent> events = ticket.confirmReviseTicket(revisedLineItemQuantities);
+    List<TicketDomainEvent> events = ticket.confirmReviseTicket(revisedOrderLineItems);
     domainEventPublisher.publish(ticket, events);
   }
 
