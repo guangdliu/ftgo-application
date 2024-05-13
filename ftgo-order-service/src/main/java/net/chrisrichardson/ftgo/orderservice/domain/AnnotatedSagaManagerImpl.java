@@ -7,6 +7,10 @@ import io.eventuate.tram.messaging.common.Message;
 import io.eventuate.tram.messaging.consumer.MessageConsumer;
 import io.eventuate.tram.messaging.producer.MessageBuilder;
 import io.eventuate.tram.sagas.common.*;
+import io.eventuate.tram.sagas.orchestration.SagaActions;
+import io.eventuate.tram.sagas.simpledsl.SagaExecutionState;
+import io.eventuate.tram.sagas.simpledsl.SagaExecutionStateJsonSerde;
+import io.eventuate.tram.sagas.simpledsl.SagaStep;
 import net.chrisrichardson.ftgo.orderservice.sagas.createorder.CreateOrderSagaState;
 
 import org.slf4j.Logger;
@@ -247,6 +251,35 @@ public class AnnotatedSagaManagerImpl<Data>
       } else {
         // only do this if successful
 
+    	/***
+    	actions.getCommands() can be null. if it's null, then it should be a local action and no commands is really sent out for local action.  
+    	
+    	If it sends command to remote service, then remote service sends back reply message to this.makeSagaReplyChannel(): 
+    	
+    	 net.chrisrichardson.ftgo.orderservice.sagas.createorder.CreateOrderSaga + "-reply"
+    	 
+    	 Note this reply channel is subscribed by SagaManagerImpl.subscribeToReplyChannel at SagaInstanceFactory.makeSagaManager.
+    	 
+    	 SagaInstanceFactory.makeSagaManage is called at OrderService.createOrder.  
+    	 
+    	   @PostConstruct
+		  public void subscribeToReplyChannel() {
+		    messageConsumer.subscribe(saga.getSagaType() + "-consumer", singleton(makeSagaReplyChannel()),
+		            this::handleMessage);
+		  }
+    	 
+    	 saga.getSagaType() + "-consumer" is 
+    	 
+    	 net.chrisrichardson.ftgo.orderservice.sagas.createorder.CreateOrderSaga + "-consumer" is subscriber id. 
+    	 
+    	 handleMessage -> handleReply
+    	 
+    	 Check handleReply, it will call processActions again. Sending a command to a remote service will break 
+    	 this while loop, it waits for remote service to send back a reply message and handleReply message and 
+    	 processActions accordingly. 
+    	 
+    	 
+    	***/
         String lastRequestId = sagaCommandProducer.sendCommands(this.getSagaType(), sagaId, actions.getCommands(), this.makeSagaReplyChannel());
         sagaInstance.setLastRequestId(lastRequestId);
 
@@ -263,6 +296,35 @@ public class AnnotatedSagaManagerImpl<Data>
         if (!actions.isLocal())
           break;
 
+        /***
+        It must be a local actions if coming here. In this case, localFunction has already been performed. We should process next action. 
+        Therefore, we call getStateDefinition().handleReply to create a new action (it could be a local or remote action). 
+        
+        Note that even there's no registered reply handler, we can still produce a next action
+        
+          @Override
+		  public SagaActions<Data> SimpleSagaDefinition.handleReply(String currentState, Data sagaData, Message message) {
+		
+		    SagaExecutionState state = SagaExecutionStateJsonSerde.decodeState(currentState);
+		    SagaStep<Data> currentStep = sagaSteps.get(state.getCurrentlyExecuting());
+		    boolean compensating = state.isCompensating();
+		
+		    currentStep.getReplyHandler(message, compensating).ifPresent(handler -> {
+		      invokeReplyHandler(message, sagaData, handler);
+		    });
+		
+		    if (currentStep.isSuccessfulReply(compensating, message)) {
+		      return executeNextStep(sagaData, state);
+		    } else if (compensating) {
+		      throw new UnsupportedOperationException("Failure when compensating");
+		    } else {
+		      return executeNextStep(sagaData, state.startCompensating());
+		    }
+		  }
+		  
+		  executeNextStep creates new action which runs this while loop again. 
+        
+        ***/
         actions = getStateDefinition().handleReply(actions.getUpdatedState().get(), actions.getUpdatedSagaData().get(), MessageBuilder
                 .withPayload("{}")
                 .withHeader(ReplyMessageHeaders.REPLY_OUTCOME, CommandReplyOutcome.SUCCESS.name())

@@ -101,10 +101,10 @@ public class AnnotatedOrderService {
   /***
   Fig 3.8
   The client (OrderService) sends a command message (CreateTicket)  ,
-  which specifies the operation to perform and params to 
+  which specifies the operation to perform and related params to 
   a mysql db table (called message from template.sql) owned by OrderService. 
   The table acts a temporary message queue. The MessageReplay is component of 
-  Eventuate that reads the message table and publishes the message to a message 
+  Eventuate (actually cdc srevice) that reads the message table and publishes the message to a message 
   broker (Figure 3.13). Message broker reads the message header which includes the
   url and channel info. Message broker publishes the message to
   a point-to-point
@@ -171,7 +171,6 @@ public class AnnotatedOrderService {
    
      (net.chrisrichardson.ftgo.orderservice.sagas.createorder.CreateOrderSaga-reply in CreateTicket.groovy)
 
-   
 
   ***/
   public AnnotatedOrderService(OrderRepository orderRepository, DomainEventPublisher eventPublisher, RestaurantRepository restaurantRepository, SagaManager<CreateOrderSagaState> createOrderSagaManager, SagaManager<CancelOrderSagaData> cancelOrderSagaManager, SagaManager<ReviseOrderSagaData> reviseOrderSagaManager, OrderDomainEventPublisher orderAggregateEventPublisher, Optional<MeterRegistry> meterRegistry) {
@@ -226,13 +225,13 @@ public class AnnotatedOrderService {
     consumes the domain event. 
     
     Events aren't the only high-level messaging pattern supported by Eventuate Tram. 
-    It also supports command/reply-based messaing. 
+    It also supports command/reply-based messaging. 
     A client can send a command message to a service using the CommandProducer interface.
     For example, SagaManagerImpl.processActions, it has
     
             String lastRequestId = sagaCommandProducer.sendCommands(this.getSagaType(), sagaId, actions.getCommands(), this.makeSagaReplyChannel());
             
-    The command message is consumed by CommandDispatcher class (e.g. KitchenServiceCommandHandler and KitchenServiceMessageHandlersConfiguration)
+    The command message is consumed by *CommandDispatcher class (e.g. KitchenServiceCommandHandler and KitchenServiceMessageHandlersConfiguration)
     
 	  @Bean
 	  public SagaCommandDispatcher KitchenServiceMessageHandlersConfiguration.kitchenServiceSagaCommandDispatcher(KitchenServiceCommandHandler kitchenServiceCommandHandler, SagaCommandDispatcherFactory sagaCommandDispatcherFactory) {
@@ -297,7 +296,7 @@ public class AnnotatedOrderService {
     consists of the command channel, the command message types and the reply types. 
     
     createOrderSagaManager is also singleton class. Its constructor takes CreateOrderSaga as param (OrderServiceConfiguration).
-    Data class is CreateOrderSagaState for createOrderSagaManager and CreateOrderSaga. 
+    Data class is CreateOrderSagaState. 
     
     createOrderSagaManager.create invokes
     	getStateDefinition().start(sagaData)

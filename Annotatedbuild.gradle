@@ -14,7 +14,10 @@ buildscript {
 plugins {
     id "com.github.ben-manes.versions" version "0.20.0"
 }
-
+/***
+WaitForMySqlPlugin.java is defined in buildSrc/src/main/groovy 
+docker-compose is from com.avast.gradle:gradle-docker-compose-plugin
+***/
 apply plugin: WaitForMySqlPlugin
 apply plugin: 'docker-compose'
 
@@ -45,6 +48,26 @@ subprojects {
     }
 
 }
+/***
+Let's continue further with our example. 
+Here, the root project will not have any source sets as all the Java code is going to be in one of the three child projects. 
+Hence, wouldn't it be wise to apply a java plugin to only child projects? 
+This is exactly where the subprojects method comes into the picture, 
+that is, when we want to apply some build logic only on subprojects without affecting the parent project. 
+Its usage is similar to allprojects. Let's just apply the java plugin to all subprojects:
+
+subprojects {
+  apply plugin: 'java'
+}
+Now, running gradle tasks should show us the tasks added by the java plugin as well. 
+Although it might appear that these tasks are available on the root project, it's actually not so. 
+Check the output of gradle -q tasks --all in this case. 
+The tasks being there on the child project can be called from the root project, 
+but this does not mean they are present on the root project. 
+The tasks added by the java plugin will only be available on subprojects,
+ whereas tasks such as help tasks will be available on all projects.
+
+***/
 
 /***
 ftgo-accounting-service-contracts

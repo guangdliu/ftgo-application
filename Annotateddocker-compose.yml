@@ -6,7 +6,7 @@ Then, with a single command, you create and start all the services from your con
 
 Using Compose is basically a three-step process:
 
-Define your app¡¯s environment with a Dockerfile so it can be reproduced anywhere.
+Define your apps environment with a Dockerfile so it can be reproduced anywhere.
 
 Define the services that make up your app in docker-compose.yml so they can be run together in an isolated environment.
 
@@ -96,7 +96,7 @@ services:
       EVENTUATE_CDC_READER_READER1_OFFSETSTORAGETOPICNAME: db.history.common
 
   ftgo-consumer-service:
-    build: ./ftgo-consumer-service
+    build: ./ftgo-consumer-service ///I think here it goes to ftgo-consumer-service's Dockerfile. There it  COPY build/libs/ftgo-consumer-service.jar to the docker image
     ports:
       - "8081:8080"
     depends_on:
